@@ -13,7 +13,7 @@ def normalize_data(data):
 csv_filename = "test_data.csv"
 test_data = pd.read_csv(csv_filename)
 
-# Séparez les fonctionnalités et les étiquettes
+# Separate features and labels
 X_test = test_data.drop("labels", axis=1)
 y_test = test_data["labels"]
 
@@ -22,47 +22,47 @@ mlb = MultiLabelBinarizer()
 y_encoded = pd.DataFrame(mlb.fit_transform(
     y_test.apply(eval)), columns=mlb.classes_)
 
-# Normalisez les données de test
+# Normalize test data
 X_test_normalized = normalize_data(X_test)
 
-# Charger le modèle TensorFlow Lite à partir du fichier
+# Load TensorFlow Lite model from file
 interpreter = tf.lite.Interpreter(model_path='gas_model.tflite')
 interpreter.allocate_tensors()
 
-# Obtenez les indices des tenseurs d'entrée et de sortie
+# Get the indices of the input and output tensors
 input_index = interpreter.get_input_details()[0]['index']
 output_index = interpreter.get_output_details()[0]['index']
 
 predictions = []
 
 for data_point in X_test_normalized.values:
-    # Mettez en forme les données pour le modèle
+    # Format the data for the model
     input_data = np.expand_dims(data_point, axis=0).astype(np.float32)
 
-    # Chargez les données d'entrée dans le modèle
+    # Load input data into model
     interpreter.set_tensor(input_index, input_data)
 
-    # Exécutez le modèle
+    # Run the model
     interpreter.invoke()
 
-    # Obtenez les résultats
+    # Get the results
     output_data = interpreter.get_tensor(output_index)
     predictions.append(output_data)
 
-# Convertir les prédictions en classes prédites
+# Convert predictions to predicted classes
 predicted_classes = np.argmax(np.vstack(predictions), axis=1)
 
-# Convertir les étiquettes encodées en classes réelles
+# Convert encoded labels to actual classes
 actual_classes = np.argmax(y_encoded.values, axis=1)
 
-# Calculer la matrice de confusion
+# Calculate the confusion matrix
 conf_matrix = confusion_matrix(actual_classes, predicted_classes)
 
-# Calculer la précision du modèle
+# Calculate model accuracy
 accuracy = np.sum(np.diag(conf_matrix)) / np.sum(conf_matrix)
 print(f"Précision du modèle : {accuracy * 100:.2f}%")
 
-# Afficher la matrice de confusion
+# Show confusion matrix
 disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix,
                               display_labels=y_encoded.columns)
 disp.plot(cmap=plt.cm.Blues, values_format='d')
